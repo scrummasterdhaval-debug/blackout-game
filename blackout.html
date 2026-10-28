@@ -1,0 +1,1077 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Blackout</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one screen — fixed switchboard header, centred bulb bank, action dock pinned to the foot. */
+:root{
+  --ink:#0b0e14; --panel:#141a25; --panel-2:#1c2331; --line:#2b3549;
+  --text:#ece7dd; --dim:#8a93a6; --faint:#5d6679;
+  --live:#ffb23f; --live-hot:#ffe3ac; --dead:#39425a; --arc:#7fd4ff;
+  --win:#95e08a; --bad:#ff7f6e;
+  --f-display:"Anton","Haettenschweiler","Arial Narrow",sans-serif;
+  --f-ui:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--ink);color:var(--text);
+  font-family:var(--f-ui);font-size:16px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(120% 70% at 50% -10%,#1a2234 0%,rgba(11,14,20,0) 60%);
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--ink)}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--arc);outline-offset:3px;border-radius:4px}
+[hidden]{display:none!important}
+
+#app{display:flex;flex-direction:column;min-height:100%}
+
+/* ---- header ---- */
+#bar{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:30;
+  background:rgba(11,14,20,.92);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.bar-in{
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:10px;
+  display:flex;align-items:center;gap:12px;
+  max-width:860px;margin:0 auto;
+}
+.brand{font-family:var(--f-display);font-size:22px;letter-spacing:.06em;line-height:1;color:var(--live);text-transform:uppercase}
+.brand span{color:var(--dead)}
+.bar-sp{flex:1}
+.chip{
+  font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;
+  border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--dim);
+  white-space:nowrap;
+}
+.chip b{color:var(--text);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint);display:inline-block;margin-right:6px;vertical-align:1px}
+.dot.on{background:var(--win);box-shadow:0 0 8px var(--win)}
+
+/* ---- shared shell ---- */
+main{flex:1;display:flex;flex-direction:column}
+.wrap{
+  width:100%;max-width:860px;margin:0 auto;flex:1;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:22px 24px;
+  display:flex;flex-direction:column;gap:20px;
+}
+h1{font-family:var(--f-display);font-size:clamp(44px,13vw,86px);line-height:.92;letter-spacing:.01em;
+   margin:0;text-transform:uppercase;text-wrap:balance;
+   background:linear-gradient(180deg,var(--live-hot),var(--live) 55%,#b0702a);
+   -webkit-background-clip:text;background-clip:text;color:transparent;}
+.tagline{font-size:17px;color:var(--dim);margin:0;max-width:34ch}
+h2{font-family:var(--f-display);font-size:20px;letter-spacing:.07em;text-transform:uppercase;margin:0;color:var(--text)}
+.lead{font-size:15px;color:var(--dim);margin:0}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+label.fl{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+input[type=text]{
+  width:100%;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:10px;
+  padding:13px 14px;color:var(--text);font-family:var(--f-mono);font-size:17px;letter-spacing:.06em;
+}
+input[type=text]::placeholder{color:var(--faint);letter-spacing:.02em}
+#f-code{text-transform:uppercase}
+
+.btn{
+  border-radius:10px;padding:13px 20px;font-weight:600;font-size:15px;letter-spacing:.03em;
+  border:1px solid var(--line);background:var(--panel-2);color:var(--text);
+  transition:background .15s,border-color .15s,transform .08s;
+}
+.btn:hover{background:#232b3d}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.42;cursor:not-allowed}
+.btn.primary{background:var(--live);border-color:var(--live);color:#231604}
+.btn.primary:hover{background:var(--live-hot)}
+.btn.ghost{background:none}
+.btn.wide{width:100%}
+.btn.lg{padding:17px 22px;font-size:17px}
+
+/* ---- rules ---- */
+.rules{display:grid;gap:10px;margin:0;padding:0;list-style:none;counter-reset:r}
+.rules li{display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start;font-size:15px;color:var(--dim)}
+.rules li b{color:var(--text);font-weight:600}
+.rk{font-family:var(--f-mono);font-size:13px;color:var(--live);padding-top:1px}
+
+/* ---- bulb bank ---- */
+.bank{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+@media (max-width:620px){.bank{grid-template-columns:repeat(3,1fr)}}
+.bulb{
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:14px 6px 11px;border-radius:14px;
+  border:1px solid var(--line);background:var(--panel);
+  transition:border-color .18s,background .18s,transform .1s;
+}
+.bulb .glass{
+  width:46px;height:46px;border-radius:50% 50% 46% 46%;
+  background:radial-gradient(circle at 50% 38%,var(--live-hot),var(--live) 42%,#7a4a14 78%,#3a2a12 100%);
+  box-shadow:0 0 26px -2px rgba(255,178,63,.55),inset 0 -6px 10px -6px #000;
+  display:grid;place-items:center;transition:box-shadow .3s,background .3s,filter .3s;
+}
+.bulb .glass::after{content:"";width:12px;height:16px;border:2px solid rgba(255,245,220,.85);border-top:none;border-radius:0 0 8px 8px}
+.bulb .val{font-family:var(--f-display);font-size:30px;line-height:1;color:var(--live-hot)}
+.bulb .tag{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;color:var(--faint)}
+.bulb.sel{border-color:var(--live);background:#241c0f;transform:translateY(-2px)}
+.bulb.sel .tag{color:var(--live)}
+.bulb.surging{border-color:var(--arc);background:#0f1f2b;box-shadow:0 0 0 1px var(--arc) inset}
+.bulb.surging .glass{background:radial-gradient(circle at 50% 38%,#eaf9ff,var(--arc) 45%,#1d5f80 80%,#102532 100%);box-shadow:0 0 30px -2px rgba(127,212,255,.6)}
+.bulb.surging .val{color:#d8f3ff}
+.bulb.surging .tag{color:var(--arc)}
+.bulb.dead{border-color:#232b3d;background:#0e121b}
+.bulb.dead .glass{background:radial-gradient(circle at 50% 38%,#434d66,#2a3246 55%,#171d28 100%);box-shadow:none;filter:saturate(.3)}
+.bulb.dead .glass::after{border-color:rgba(160,172,196,.35)}
+.bulb.dead .val{color:var(--dead)}
+.bulb.dead .tag{color:#36405a}
+.bulb[disabled]{cursor:not-allowed}
+.bulb .pins{position:absolute;top:7px;right:7px;display:flex;gap:3px}
+.pin{width:9px;height:9px;border-radius:50%;border:1px solid rgba(0,0,0,.45)}
+
+/* ---- players ---- */
+.players{display:flex;flex-wrap:wrap;gap:8px}
+.pl{
+  display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;
+  padding:6px 13px 6px 9px;background:var(--panel);font-size:14px;min-width:0;
+}
+.pl .sw{width:11px;height:11px;border-radius:50%;flex:none}
+.pl .nm{max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .sc{font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums;color:var(--live);font-weight:500}
+.pl.ready{border-color:var(--win)}
+.pl.me{box-shadow:0 0 0 1px var(--faint) inset}
+.pl .su{color:var(--arc);font-size:12px;letter-spacing:.1em;font-family:var(--f-mono)}
+.pl.out .nm,.pl.out .sc{opacity:.45}
+
+/* ---- dock ---- */
+.dock{
+  position:sticky;bottom:0;z-index:20;margin-top:auto;
+  background:linear-gradient(180deg,rgba(11,14,20,0),var(--ink) 38%);
+  padding-top:18px;
+  padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+}
+.dock-in{display:flex;flex-direction:column;gap:10px}
+.timer{height:4px;border-radius:999px;background:var(--panel-2);overflow:hidden}
+.timer i{display:block;height:100%;background:var(--live);width:100%;transition:width .95s linear}
+.timer.hot i{background:var(--bad)}
+.hint{font-size:13px;color:var(--faint);text-align:center;min-height:19px}
+
+/* ---- results ---- */
+.res{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.res li{display:grid;grid-template-columns:22px 1fr auto;gap:11px;align-items:baseline;
+  border-left:2px solid var(--line);padding:7px 0 7px 12px;font-size:15px;color:var(--dim)}
+.res li .ic{font-family:var(--f-mono);font-size:13px}
+.res li b{color:var(--text);font-weight:600}
+.res li .pts{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:14px}
+.res li.solo{border-left-color:var(--live)} .res li.solo .ic,.res li.solo .pts{color:var(--live)}
+.res li.surge{border-left-color:var(--arc)} .res li.surge .ic,.res li.surge .pts{color:var(--arc)}
+.res li.out{border-left-color:var(--bad)} .res li.out .ic{color:var(--bad)}
+.res li.fizzle{border-left-color:var(--faint)}
+
+/* ---- cover (pass & play) ---- */
+.cover{position:fixed;inset:0;z-index:50;background:var(--ink);display:grid;place-items:center;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.cover .inner{text-align:center;display:flex;flex-direction:column;gap:18px;align-items:center;max-width:30ch}
+.cover .who{font-family:var(--f-display);font-size:clamp(34px,11vw,60px);line-height:1;text-transform:uppercase;color:var(--live)}
+
+/* ---- misc ---- */
+.final{display:grid;gap:8px}
+.fr{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;
+    border:1px solid var(--line);border-radius:12px;padding:12px 15px;background:var(--panel)}
+.fr .rk2{font-family:var(--f-display);font-size:22px;color:var(--faint)}
+.fr.first{border-color:var(--live);background:#1f1809}
+.fr.first .rk2{color:var(--live)}
+.fr .tot{font-family:var(--f-mono);font-size:19px;font-variant-numeric:tabular-nums;color:var(--live)}
+.codebox{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bigcode{font-family:var(--f-display);font-size:clamp(38px,12vw,58px);letter-spacing:.14em;color:var(--live);line-height:1}
+.note{font-size:13px;color:var(--faint);margin:0}
+.note a{color:var(--dim)}
+.warn{border-left:2px solid var(--arc);padding-left:12px;font-size:14px;color:var(--dim)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app">
+  <header id="bar">
+    <div class="bar-in">
+      <div class="brand">Black<span>out</span></div>
+      <div class="bar-sp"></div>
+      <div class="chip" id="c-room" hidden>ROOM <b id="c-room-v">----</b></div>
+      <div class="chip" id="c-round" hidden>RND <b id="c-round-v">1</b>/9</div>
+      <div class="chip" id="c-net" hidden><span class="dot" id="c-net-d"></span><span id="c-net-v">linking</span></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section class="wrap" id="s-home">
+      <div class="stack">
+        <h1>Pick a light.<br>Share it and it dies.</h1>
+        <p class="tagline">A 3-minute bluffing game for 2&ndash;8 people, on everyone&rsquo;s own phone.</p>
+      </div>
+
+      <div class="card stack">
+        <h2>How it works</h2>
+        <ol class="rules">
+          <li><span class="rk">01</span><span>Five bulbs, worth <b>1 to 5 points</b>. Every round, everyone secretly taps one.</span></li>
+          <li><span class="rk">02</span><span>Alone on a bulb? <b>You bank its points.</b></span></li>
+          <li><span class="rk">03</span><span>Two or more on the same bulb? It <b>blacks out for good</b> and nobody scores.</span></li>
+          <li><span class="rk">04</span><span>Every blackout pushes power into what&rsquo;s left &mdash; <b>surviving bulbs gain +1</b> each time.</span></li>
+          <li><span class="rk">05</span><span>One <b>Surge</b> per game: if you collide, you take the bulb and it survives. Surge alone and you score nothing.</span></li>
+          <li><span class="rk">06</span><span>It ends when one bulb is left standing. <b>Most points wins.</b></span></li>
+        </ol>
+      </div>
+
+      <div class="card stack">
+        <label class="fl" for="f-name">Your name</label>
+        <input type="text" id="f-name" maxlength="12" placeholder="Jo" autocomplete="off" spellcheck="false">
+        <div class="row">
+          <button class="btn primary lg" id="b-create">Start a room</button>
+        </div>
+        <div class="row">
+          <div style="flex:1;min-width:150px">
+            <label class="fl" for="f-code">Join with a code</label>
+            <input type="text" id="f-code" maxlength="4" placeholder="A7KM" autocomplete="off" spellcheck="false">
+          </div>
+          <button class="btn" id="b-join" style="align-self:flex-end">Join</button>
+        </div>
+        <p class="note" id="home-msg"></p>
+        <p class="note">On one device instead? <button class="btn ghost" id="b-local" style="padding:2px 4px;text-decoration:underline">Play pass-and-pass on this phone</button></p>
+      </div>
+    </section>
+
+    <!-- LOBBY -->
+    <section class="wrap" id="s-lobby" hidden>
+      <div class="stack">
+        <h2>Waiting room</h2>
+        <div class="codebox" id="lob-code">
+          <div class="bigcode" id="lob-code-v">----</div>
+          <button class="btn" id="b-copy">Copy invite link</button>
+        </div>
+        <p class="lead" id="lob-help">Anyone with the code joins from their own phone. Nothing to install.</p>
+      </div>
+      <div class="card stack">
+        <h2 id="lob-count">Players</h2>
+        <div class="players" id="lob-players"></div>
+        <p class="note" id="lob-note"></p>
+      </div>
+      <div class="card stack" id="lob-add" hidden>
+        <label class="fl" for="f-addname">Add a player on this device</label>
+        <div class="row">
+          <div style="flex:1;min-width:140px"><input type="text" id="f-addname" maxlength="12" placeholder="Name" autocomplete="off"></div>
+          <button class="btn" id="b-addname">Add</button>
+        </div>
+      </div>
+      <div class="dock"><div class="dock-in">
+        <button class="btn primary lg wide" id="b-start">Start game</button>
+        <div class="hint" id="lob-hint">Two players minimum.</div>
+      </div></div>
+    </section>
+
+    <!-- GAME -->
+    <section class="wrap" id="s-game" hidden>
+      <div class="stack">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="g-phase">Choose a bulb</h2>
+          <div class="chip" id="g-left">5 live</div>
+        </div>
+        <p class="lead" id="g-sub">Alone wins it. Shared kills it.</p>
+      </div>
+
+      <div class="bank" id="g-bank"></div>
+
+      <div class="players" id="g-players"></div>
+
+      <div class="card stack" id="g-resbox" hidden>
+        <h2 id="g-restitle">Round</h2>
+        <ul class="res" id="g-res"></ul>
+      </div>
+
+      <div class="dock"><div class="dock-in">
+        <div class="timer" id="g-timer"><i id="g-timer-i"></i></div>
+        <div class="row">
+          <button class="btn" id="b-surge" style="flex:1">&#9889; Surge</button>
+          <button class="btn primary" id="b-lock" style="flex:2">Lock it in</button>
+        </div>
+        <div class="hint" id="g-hint"></div>
+      </div></div>
+    </section>
+
+    <!-- OVER -->
+    <section class="wrap" id="s-over" hidden>
+      <div class="stack">
+        <h1 id="o-head">Lights out.</h1>
+        <p class="tagline" id="o-sub"></p>
+      </div>
+      <div class="final" id="o-final"></div>
+      <div class="dock"><div class="dock-in">
+        <button class="btn primary lg wide" id="b-again">Play again</button>
+        <div class="hint" id="o-hint"></div>
+      </div></div>
+    </section>
+  </main>
+</div>
+
+<div class="cover" id="cover" hidden>
+  <div class="inner">
+    <p class="note" id="cov-pre">Pass the phone to</p>
+    <div class="who" id="cov-who">&nbsp;</div>
+    <p class="lead" id="cov-sub">Nobody else should be looking.</p>
+    <button class="btn primary lg" id="b-cov">That&rsquo;s me &mdash; show the bulbs</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ========== constants ========== */
+var ALPHA = "abcdefghjkmnpqrstuvwxyz23456789";
+var COLORS = ["#ffb23f","#7fd4ff","#95e08a","#ff7f6e","#c89bff","#ffe3ac","#6fd2bd","#ff9ecb"];
+var MAX_ROUNDS = 9, PICK_SECONDS = 25, RESULT_SECONDS = 6, OPEN_GRACE = 2500;
+
+/* ========== dom ========== */
+function $(id){ return document.getElementById(id); }
+var S = {home:$("s-home"), lobby:$("s-lobby"), game:$("s-game"), over:$("s-over")};
+var screen = "home";
+
+function show(name){
+  screen = name;
+  for (var k in S) S[k].hidden = (k !== name);
+  $("c-room").hidden = !(ROOM_CODE && name !== "home");
+  $("c-round").hidden = !(G && name === "game");
+  $("c-net").hidden = (MODE !== "online");
+  window.scrollTo(0,0);
+}
+
+function setText(el, s){ el.textContent = s; }
+
+/* ========== state ========== */
+var MODE = null;          // "online" | "local"
+var ROOM = null;          // NamedRoom
+var ROOM_CODE = null;     // 4-char display code
+var MY_PEER = null;       // peer id in room
+var MY_NAME = "";
+var G = null;             // game state (authoritative copy)
+var IS_HOST = false;
+var CACHED_G = null;      // last state seen, for host handover
+
+var myPick = null, mySurge = false, myLocked = false, myNonce = null;
+var commits = {}, opens = {};         // host-side, keyed by player id
+var pickTimer = null, tickTimer = null, resultTimer = null, graceTimer = null;
+var localTurn = 0, localPicks = {};   // pass & play
+
+/* ========== helpers ========== */
+function code4(){
+  var s = "";
+  var a = new Uint32Array(4);
+  (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : (a = [Math.random()*1e9,Math.random()*1e9,Math.random()*1e9,Math.random()*1e9]);
+  for (var i=0;i<4;i++) s += ALPHA[Math.floor(a[i]) % ALPHA.length];
+  return s;
+}
+function nonce(){
+  var a = new Uint8Array(12);
+  if ((window.crypto||{}).getRandomValues) crypto.getRandomValues(a);
+  else for (var i=0;i<12;i++) a[i] = Math.floor(Math.random()*256);
+  return Array.prototype.map.call(a, function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+}
+function sha(str){
+  if (!(window.crypto && crypto.subtle && crypto.subtle.digest)) return Promise.resolve("plain:"+str);
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+  });
+}
+function store(k,v){ try{ v===null ? localStorage.removeItem(k) : localStorage.setItem(k,v); }catch(e){} }
+function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function clean(s){ return String(s==null?"":s).replace(/\s+/g," ").trim().slice(0,12); }
+function plural(n,w){ return n + " " + w + (n===1?"":"s"); }
+
+/* ========== pure game engine ========== */
+function newGame(players, carry){
+  // players: [{id, name, color}]
+  var P = {};
+  players.forEach(function(p,i){
+    var prev = carry && carry[p.id];
+    P[p.id] = { n:p.name, c:p.color, s:0, su:true, w:prev?prev.w:0 };
+  });
+  return {
+    v: 1, phase: "pick", round: 1,
+    bulbs: [1,2,3,4,5].map(function(v){ return {v:v, dead:false}; }),
+    order: players.map(function(p){ return p.id; }),
+    players: P,
+    last: null
+  };
+}
+
+function liveBulbs(g){ return g.bulbs.filter(function(b){ return !b.dead; }).length; }
+
+function resolveRound(g, picks){
+  var bulbs = g.bulbs.map(function(b){ return {v:b.v, dead:b.dead}; });
+  var byBulb = {}, lines = [], blackouts = 0, gains = {};
+  var pid;
+  for (pid in picks){
+    var p = picks[pid];
+    if (!g.players[pid]) continue;
+    if (!bulbs[p.b] || bulbs[p.b].dead) continue;
+    (byBulb[p.b] = byBulb[p.b] || []).push({ pid: pid, surge: !!p.s });
+  }
+  Object.keys(byBulb).forEach(function(key){
+    var i = +key, list = byBulb[key], val = bulbs[i].v;
+    var surgers = list.filter(function(x){ return x.surge; });
+    if (list.length === 1){
+      var only = list[0];
+      if (only.surge){
+        lines.push({ kind:"fizzle", bulb:i, who:[only.pid], pts:0 });
+      } else {
+        gains[only.pid] = (gains[only.pid]||0) + val;
+        lines.push({ kind:"solo", bulb:i, who:[only.pid], pts:val });
+      }
+    } else if (surgers.length === 1){
+      var w = surgers[0];
+      gains[w.pid] = (gains[w.pid]||0) + val;
+      lines.push({ kind:"surge", bulb:i, who:[w.pid], pts:val,
+                   beat:list.filter(function(x){return x.pid!==w.pid;}).map(function(x){return x.pid;}) });
+    } else {
+      bulbs[i].dead = true; blackouts++;
+      lines.push({ kind:"blackout", bulb:i, who:list.map(function(x){ return x.pid; }), pts:0 });
+    }
+  });
+  if (blackouts){
+    for (var j=0;j<bulbs.length;j++) if (!bulbs[j].dead) bulbs[j].v += blackouts;
+  }
+  var idle = g.order.filter(function(id){ return !picks[id]; });
+  if (idle.length) lines.push({ kind:"idle", bulb:-1, who:idle, pts:0 });
+  lines.sort(function(a,b){ return (b.pts - a.pts) || (a.bulb - b.bulb); });
+  return { bulbs:bulbs, lines:lines, gains:gains, blackouts:blackouts };
+}
+
+function applyRound(g, picks, out){
+  var id;
+  for (id in out.gains) if (g.players[id]) g.players[id].s += out.gains[id];
+  for (id in picks) if (g.players[id] && picks[id].s) g.players[id].su = false;
+  g.bulbs = out.bulbs;
+  g.last = { round: g.round, lines: out.lines, blackouts: out.blackouts };
+  var done = liveBulbs(g) <= 1 || g.round >= MAX_ROUNDS;
+  if (done){
+    g.phase = "over";
+    var best = -1;
+    g.order.forEach(function(i){ if (g.players[i].s > best) best = g.players[i].s; });
+    g.order.forEach(function(i){ if (g.players[i].s === best) g.players[i].w++; });
+  } else {
+    g.phase = "result";
+  }
+  g.v++;
+  return g;
+}
+
+function nextRound(g){
+  g.round++; g.phase = "pick"; g.v++;
+  return g;
+}
+
+/* ========== rendering ========== */
+function bulbEl(b, i, interactive){
+  var el = document.createElement("button");
+  el.className = "bulb" + (b.dead ? " dead" : "");
+  el.setAttribute("data-i", String(i));
+  if (b.dead || !interactive) el.disabled = true;
+  if (!b.dead && myPick === i) el.className += mySurge ? " sel surging" : " sel";
+
+  var glass = document.createElement("span"); glass.className = "glass";
+  var val = document.createElement("span"); val.className = "val"; val.textContent = b.dead ? "—" : String(b.v);
+  var tag = document.createElement("span"); tag.className = "tag";
+  tag.textContent = b.dead ? "DEAD" : (myPick === i ? (mySurge ? "SURGE" : "PICKED") : "LIVE");
+  el.appendChild(glass); el.appendChild(val); el.appendChild(tag);
+
+  if (G && G.last && G.phase === "result"){
+    var pins = document.createElement("span"); pins.className = "pins";
+    G.last.lines.forEach(function(ln){
+      if (ln.bulb !== i) return;
+      var all = ln.who.concat(ln.beat || []);
+      all.forEach(function(pid){
+        var p = G.players[pid]; if (!p) return;
+        var d = document.createElement("span"); d.className = "pin"; d.style.background = p.c;
+        pins.appendChild(d);
+      });
+    });
+    if (pins.childNodes.length) el.appendChild(pins);
+  }
+  return el;
+}
+
+function renderBank(){
+  var bank = $("g-bank"); bank.textContent = "";
+  var interactive = (G.phase === "pick") && !myLocked && amPlaying();
+  G.bulbs.forEach(function(b,i){ bank.appendChild(bulbEl(b,i,interactive)); });
+  setText($("g-left"), plural(liveBulbs(G), "bulb") + " live");
+}
+
+function playerChip(id, opts){
+  var p = G.players[id];
+  var el = document.createElement("div");
+  el.className = "pl" + (opts.ready ? " ready" : "") + (opts.me ? " me" : "") + (opts.out ? " out" : "");
+  var sw = document.createElement("span"); sw.className = "sw"; sw.style.background = p.c;
+  var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = p.n;
+  var sc = document.createElement("span"); sc.className = "sc"; sc.textContent = String(p.s);
+  el.appendChild(sw); el.appendChild(nm); el.appendChild(sc);
+  if (p.su){ var su = document.createElement("span"); su.className = "su"; su.textContent = "⚡"; el.appendChild(su); }
+  return el;
+}
+
+function renderPlayers(){
+  var box = $("g-players"); box.textContent = "";
+  G.order.forEach(function(id){
+    box.appendChild(playerChip(id, {
+      ready: G.phase === "pick" && isReady(id),
+      me: id === myId(),
+      out: false
+    }));
+  });
+}
+
+function renderResults(){
+  var box = $("g-resbox"), list = $("g-res");
+  if (!G.last || (G.phase !== "result" && G.phase !== "over")){ box.hidden = true; return; }
+  box.hidden = false;
+  setText($("g-restitle"), "Round " + G.last.round + (G.last.blackouts ? " — " + plural(G.last.blackouts,"blackout") : ""));
+  list.textContent = "";
+  G.last.lines.forEach(function(ln){
+    var li = document.createElement("li");
+    var names = ln.who.map(function(id){ return G.players[id] ? G.players[id].n : "?"; }).join(", ");
+    var ic = document.createElement("span"); ic.className = "ic";
+    var txt = document.createElement("span");
+    var pts = document.createElement("span"); pts.className = "pts";
+    var b = document.createElement("b"); b.textContent = names;
+
+    if (ln.kind === "solo"){
+      li.className = "solo"; ic.textContent = "●";
+      txt.appendChild(b); txt.appendChild(document.createTextNode(" had bulb " + (ln.bulb+1) + " alone"));
+      pts.textContent = "+" + ln.pts;
+    } else if (ln.kind === "surge"){
+      li.className = "surge"; ic.textContent = "⚡";
+      var beat = (ln.beat||[]).map(function(id){ return G.players[id] ? G.players[id].n : "?"; }).join(", ");
+      txt.appendChild(b); txt.appendChild(document.createTextNode(" surged bulb " + (ln.bulb+1) + (beat ? " through " + beat : "") + " — it held"));
+      pts.textContent = "+" + ln.pts;
+    } else if (ln.kind === "blackout"){
+      li.className = "out"; ic.textContent = "✕";
+      txt.appendChild(document.createTextNode("Bulb " + (ln.bulb+1) + " blew — "));
+      txt.appendChild(b);
+      pts.textContent = "0";
+    } else if (ln.kind === "fizzle"){
+      li.className = "fizzle"; ic.textContent = "⚡";
+      txt.appendChild(b); txt.appendChild(document.createTextNode(" surged an empty bulb"));
+      pts.textContent = "0";
+    } else {
+      li.className = "fizzle"; ic.textContent = "…";
+      txt.appendChild(b); txt.appendChild(document.createTextNode(" didn’t pick in time"));
+      pts.textContent = "0";
+    }
+    li.appendChild(ic); li.appendChild(txt); li.appendChild(pts);
+    list.appendChild(li);
+  });
+}
+
+function renderGame(){
+  if (!G) return;
+  setText($("c-round-v"), String(G.round));
+  renderBank(); renderPlayers(); renderResults();
+
+  var lock = $("b-lock"), surge = $("b-surge"), hint = $("g-hint");
+  var playing = amPlaying();
+
+  if (G.phase === "pick"){
+    setText($("g-phase"), myLocked ? "Locked in" : "Choose a bulb");
+    setText($("g-sub"), myLocked ? "Nobody sees your choice until everyone has chosen."
+                                 : "Alone on it, you bank it. Shared, it blows.");
+    lock.hidden = false; surge.hidden = false;
+    lock.disabled = myLocked || myPick === null || !playing;
+    lock.textContent = myLocked ? "Waiting…" : "Lock it in";
+    var me = G.players[myId()];
+    surge.disabled = myLocked || !playing || !(me && me.su);
+    surge.textContent = mySurge ? "⚡ Surge armed" : "⚡ Surge";
+    surge.style.borderColor = mySurge ? "var(--arc)" : "";
+    surge.style.color = mySurge ? "var(--arc)" : "";
+    var waiting = G.order.filter(function(id){ return !isReady(id); }).length;
+    setText(hint, !playing ? "Watching this round."
+      : myLocked ? (waiting ? "Waiting on " + plural(waiting,"player") : "Revealing…")
+      : (me && me.su ? "Surge spends your one shot: it only pays off on a collision." : "Your surge is spent."));
+  } else if (G.phase === "result"){
+    setText($("g-phase"), "Round " + G.last.round + " results");
+    setText($("g-sub"), G.last.blackouts ? "Power rerouted — every surviving bulb gained +" + G.last.blackouts + "." : "No collisions. The grid holds.");
+    lock.hidden = true; surge.hidden = true;
+    setText(hint, "Next round starting…");
+  }
+  $("g-timer").hidden = (G.phase !== "pick");
+}
+
+function renderOver(){
+  var ranked = G.order.slice().sort(function(a,b){ return G.players[b].s - G.players[a].s; });
+  var top = G.players[ranked[0]].s;
+  var winners = ranked.filter(function(id){ return G.players[id].s === top; });
+  setText($("o-head"), winners.length > 1 ? "Dead heat." : "Lights out.");
+  setText($("o-sub"), winners.length > 1
+    ? winners.map(function(id){ return G.players[id].n; }).join(" and ") + " tie on " + top + "."
+    : G.players[winners[0]].n + " wins with " + top + " points.");
+  var box = $("o-final"); box.textContent = "";
+  ranked.forEach(function(id,i){
+    var p = G.players[id];
+    var row = document.createElement("div"); row.className = "fr" + (p.s === top ? " first" : "");
+    var rk = document.createElement("div"); rk.className = "rk2"; rk.textContent = String(i+1);
+    var nm = document.createElement("div");
+    var sw = document.createElement("span"); sw.className = "sw";
+    sw.style.cssText = "display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:9px;background:" + p.c;
+    var t = document.createElement("span"); t.textContent = p.n;
+    var w = document.createElement("span");
+    w.style.cssText = "color:var(--faint);font-size:13px;margin-left:9px;font-family:var(--f-mono)";
+    w.textContent = p.w ? plural(p.w,"win") : "";
+    nm.appendChild(sw); nm.appendChild(t); nm.appendChild(w);
+    var tot = document.createElement("div"); tot.className = "tot"; tot.textContent = String(p.s);
+    row.appendChild(rk); row.appendChild(nm); row.appendChild(tot);
+    box.appendChild(row);
+  });
+  var again = $("b-again");
+  again.hidden = !(MODE === "local" || IS_HOST);
+  setText($("o-hint"), (MODE === "local" || IS_HOST) ? "Scores reset; win counts carry over." : "Waiting for the host to deal again.");
+}
+
+/* ========== identity ========== */
+function myId(){ return MODE === "local" ? localCurrentId() : MY_PEER; }
+function localCurrentId(){ return G && G.order[localTurn] ? G.order[localTurn] : null; }
+function amPlaying(){ return !!(G && G.players[myId()]); }
+function isReady(id){
+  if (MODE === "local") return !!localPicks[id];
+  if (IS_HOST) return !!commits[id];
+  var p = peerById(id);
+  return !!(p && p.presence && p.presence.rdy);
+}
+function peerById(id){
+  if (!ROOM) return null;
+  var list = ROOM.peers();
+  for (var i=0;i<list.length;i++) if (list[i].peer === id) return list[i];
+  return null;
+}
+
+/* ========== online: host election & state fan-out ========== */
+function publishState(){
+  if (!ROOM || !G) return;
+  CACHED_G = G;
+  ROOM.presence({ g: G }).catch(function(){});
+}
+function publishMe(){
+  if (!ROOM) return;
+  ROOM.presence({ n: MY_NAME, rdy: myLocked }).catch(function(){});
+}
+
+function resolveHost(peers){
+  var holders = peers.filter(function(p){ return p.presence && p.presence.g && p.presence.g.order; });
+  if (holders.length){
+    holders.sort(function(a,b){
+      return (b.presence.g.v - a.presence.g.v) || (a.peer < b.peer ? -1 : 1);
+    });
+    return holders[0];
+  }
+  var named = peers.filter(function(p){ return p.presence && p.presence.n; })
+                   .sort(function(a,b){ return a.peer < b.peer ? -1 : 1; });
+  return named[0] || null;
+}
+
+function onPeersChange(change){
+  var peers = change.peers;
+  var me = null;
+  for (var i=0;i<peers.length;i++) if (peers[i].sameTab) me = peers[i];
+  if (me) MY_PEER = me.peer;
+
+  var host = resolveHost(peers);
+  var wasHost = IS_HOST;
+  IS_HOST = !!(host && host.sameTab);
+
+  if (!IS_HOST && host){
+    // adopt the host's state
+    var hg = host.presence.g;
+    if (hg && (!G || hg.v >= G.v)){
+      var changedRound = !G || G.round !== hg.round || G.phase !== hg.phase;
+      G = hg; CACHED_G = hg;
+      if (changedRound) onPhaseChanged();
+    }
+    if (wasHost && me && me.presence && me.presence.g){
+      ROOM.presence({ g: null }).catch(function(){});   // stand down cleanly
+    }
+  }
+
+  if (IS_HOST && !G && CACHED_G){ G = CACHED_G; publishState(); }
+
+  if (screen === "lobby") renderLobby(peers);
+  else if (screen === "game") renderGame();
+  else if (screen === "over") renderOver();
+}
+
+function lobbyPlayers(){
+  if (!ROOM) return [];
+  return ROOM.peers()
+    .filter(function(p){ return p.kind === "viewer" && p.presence && p.presence.n; })
+    .sort(function(a,b){ return a.peer < b.peer ? -1 : 1; });
+}
+
+function renderLobby(){
+  var box = $("lob-players"); box.textContent = "";
+  var n = 0;
+  if (MODE === "online"){
+    lobbyPlayers().forEach(function(p,i){
+      n++;
+      var el = document.createElement("div"); el.className = "pl" + (p.sameTab ? " me" : "");
+      var sw = document.createElement("span"); sw.className = "sw"; sw.style.background = COLORS[i % COLORS.length];
+      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = clean(p.presence.n) || "Player";
+      el.appendChild(sw); el.appendChild(nm);
+      if (p.sameTab){ var you = document.createElement("span"); you.className="su"; you.textContent="YOU"; el.appendChild(you); }
+      box.appendChild(el);
+    });
+    setText($("lob-note"), IS_HOST ? "You’re the host — start when everyone’s in."
+                                   : "Waiting for the host to start.");
+    $("b-start").hidden = !IS_HOST;
+    $("lob-add").hidden = true;
+  } else {
+    LOCAL_ROSTER.forEach(function(p,i){
+      n++;
+      var el = document.createElement("div"); el.className = "pl";
+      var sw = document.createElement("span"); sw.className = "sw"; sw.style.background = p.color;
+      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = p.name;
+      var x = document.createElement("button");
+      x.textContent = "×"; x.setAttribute("aria-label","Remove " + p.name);
+      x.style.cssText = "color:var(--faint);padding:0 2px;font-size:17px;line-height:1";
+      x.onclick = function(){ LOCAL_ROSTER.splice(i,1); renderLobby(); };
+      el.appendChild(sw); el.appendChild(nm); el.appendChild(x);
+      box.appendChild(el);
+    });
+    setText($("lob-note"), "Everyone plays on this one device — the screen hides between turns.");
+    $("b-start").hidden = false;
+    $("lob-add").hidden = false;
+  }
+  setText($("lob-count"), n ? plural(n,"player") : "Players");
+  $("b-start").disabled = n < 2;
+  setText($("lob-hint"), n < 2 ? "Two players minimum." : "Best with three to six.");
+}
+
+/* ========== round driving (host / local) ========== */
+function onPhaseChanged(){
+  clearTimers();
+  if (!G) return;
+  if (G.phase === "pick"){
+    myPick = null; mySurge = false; myLocked = false; myNonce = null;
+    if (MODE === "online") publishMe();
+    if (MODE === "local"){ localPicks = {}; localTurn = 0; startLocalTurn(); }
+    else startPickTimer();
+    show("game");
+  } else if (G.phase === "result"){
+    myLocked = false;
+    show("game");
+    if (IS_HOST || MODE === "local"){
+      resultTimer = setTimeout(function(){
+        nextRound(G);
+        if (MODE === "online") publishState();
+        onPhaseChanged();
+        renderGame();
+      }, RESULT_SECONDS * 1000);
+    }
+  } else if (G.phase === "over"){
+    show("over"); renderOver(); return;
+  }
+  renderGame();
+}
+
+function clearTimers(){
+  clearTimeout(pickTimer); clearTimeout(resultTimer); clearTimeout(graceTimer);
+  clearInterval(tickTimer);
+  pickTimer = resultTimer = graceTimer = tickTimer = null;
+}
+
+function startPickTimer(){
+  var total = PICK_SECONDS, left = total;
+  var bar = $("g-timer-i"), wrap = $("g-timer");
+  bar.style.width = "100%"; wrap.className = "timer";
+  tickTimer = setInterval(function(){
+    left--;
+    bar.style.width = Math.max(0, (left/total)*100) + "%";
+    if (left <= 6) wrap.className = "timer hot";
+    if (left <= 0) clearInterval(tickTimer);
+  }, 1000);
+  if (IS_HOST){
+    pickTimer = setTimeout(function(){ callReveal(); }, total * 1000);
+  }
+}
+
+/* --- commit / reveal --- */
+function lockIn(){
+  if (myPick === null || myLocked) return;
+  myLocked = true;
+  if (MODE === "local"){
+    localPicks[localCurrentId()] = { b: myPick, s: mySurge };
+    advanceLocalTurn();
+    return;
+  }
+  myNonce = nonce();
+  var payload = G.round + "|" + myPick + "|" + (mySurge ? 1 : 0) + "|" + myNonce;
+  sha(payload).then(function(h){
+    if (IS_HOST) takeCommit(MY_PEER, G.round, h);
+    ROOM.emit("commit", { r: G.round, h: h }).catch(function(){});
+  });
+  publishMe();
+  renderGame();
+}
+
+function takeCommit(pid, round, h){
+  if (!G || G.phase !== "pick" || round !== G.round) return;
+  if (!G.players[pid]) return;
+  if (commits[pid]) return;
+  commits[pid] = h;
+  renderGame();
+  var all = G.order.every(function(id){ return !!commits[id]; });
+  if (all) callReveal();
+}
+
+function callReveal(){
+  if (!IS_HOST || !G || G.phase !== "pick") return;
+  clearTimeout(pickTimer); clearInterval(tickTimer);
+  ROOM.emit("reveal", { r: G.round }).catch(function(){});
+  sendOpen(G.round);
+  graceTimer = setTimeout(function(){ finishRound(); }, OPEN_GRACE);
+}
+
+function sendOpen(round){
+  if (!myLocked || myPick === null || !myNonce) return;
+  var msg = { r: round, b: myPick, s: mySurge ? 1 : 0, k: myNonce };
+  if (IS_HOST) takeOpen(MY_PEER, msg);
+  ROOM.emit("open", msg).catch(function(){});
+}
+
+function takeOpen(pid, msg){
+  if (!IS_HOST || !G || !G.players[pid]) return;
+  if (msg.r !== G.round || opens[pid]) return;
+  var h = commits[pid];
+  if (!h) return;
+  sha(msg.r + "|" + msg.b + "|" + (msg.s ? 1 : 0) + "|" + msg.k).then(function(check){
+    if (check !== h) return;                 // commitment broken — discard
+    opens[pid] = { b: msg.b, s: !!msg.s };
+    var all = G.order.every(function(id){ return !commits[id] || opens[id]; });
+    if (all) finishRound();
+  });
+}
+
+function finishRound(){
+  if (!IS_HOST || !G || G.phase !== "pick") return;
+  clearTimers();
+  var picks = opens;
+  commits = {}; opens = {};
+  var out = resolveRound(G, picks);
+  applyRound(G, picks, out);
+  publishState();
+  onPhaseChanged();
+  renderGame();
+  if (G.phase === "over") renderOver();
+}
+
+/* ========== pass & play ========== */
+var LOCAL_ROSTER = [];
+
+function startLocalTurn(){
+  if (!G) return;
+  var id = G.order[localTurn];
+  if (!id){ finishLocalRound(); return; }
+  myPick = null; mySurge = false; myLocked = false;
+  var p = G.players[id];
+  setText($("cov-pre"), "Round " + G.round + " — pass the phone to");
+  setText($("cov-who"), p.n);
+  $("cov-who").style.color = p.c;
+  setText($("cov-sub"), "Everyone else: eyes up.");
+  $("cover").hidden = false;
+  renderGame();
+}
+
+function advanceLocalTurn(){
+  localTurn++;
+  if (localTurn >= G.order.length) finishLocalRound();
+  else startLocalTurn();
+}
+
+function finishLocalRound(){
+  var out = resolveRound(G, localPicks);
+  applyRound(G, localPicks, out);
+  localPicks = {}; localTurn = 0;
+  $("cover").hidden = true;
+  onPhaseChanged();
+  renderGame();
+  if (G.phase === "over") renderOver();
+}
+
+/* ========== wiring ========== */
+$("g-bank").addEventListener("click", function(e){
+  var t = e.target.closest ? e.target.closest(".bulb") : null;
+  if (!t || t.disabled) return;
+  var i = +t.getAttribute("data-i");
+  myPick = (myPick === i) ? null : i;
+  if (myPick === null) mySurge = false;
+  renderGame();
+});
+$("b-surge").addEventListener("click", function(){
+  var me = G && G.players[myId()];
+  if (!me || !me.su || myLocked) return;
+  mySurge = !mySurge;
+  renderGame();
+});
+$("b-lock").addEventListener("click", lockIn);
+$("b-cov").addEventListener("click", function(){ $("cover").hidden = true; renderGame(); });
+
+$("b-addname").addEventListener("click", function(){
+  var v = clean($("f-addname").value);
+  if (!v || LOCAL_ROSTER.length >= 8) return;
+  LOCAL_ROSTER.push({ id:"p"+LOCAL_ROSTER.length+"-"+nonce().slice(0,4), name:v, color:COLORS[LOCAL_ROSTER.length % COLORS.length] });
+  $("f-addname").value = "";
+  renderLobby();
+});
+$("f-addname").addEventListener("keydown", function(e){ if (e.key === "Enter") $("b-addname").click(); });
+
+$("b-start").addEventListener("click", function(){
+  if (MODE === "local"){
+    G = newGame(LOCAL_ROSTER, G && G.players);
+    onPhaseChanged();
+  } else {
+    var list = lobbyPlayers();
+    if (list.length < 2) return;
+    var carry = G && G.players;
+    G = newGame(list.map(function(p,i){
+      return { id:p.peer, name: clean(p.presence.n) || "Player", color: COLORS[i % COLORS.length] };
+    }), carry);
+    commits = {}; opens = {};
+    publishState();
+    onPhaseChanged();
+  }
+});
+
+$("b-again").addEventListener("click", function(){
+  if (MODE === "local"){
+    G = newGame(LOCAL_ROSTER, G.players);
+    onPhaseChanged();
+  } else {
+    if (!IS_HOST) return;
+    var carry = G.players;
+    var list = lobbyPlayers();
+    G = newGame(list.map(function(p,i){
+      return { id:p.peer, name: clean(p.presence.n) || "Player", color: COLORS[i % COLORS.length] };
+    }), carry);
+    commits = {}; opens = {};
+    publishState();
+    onPhaseChanged();
+  }
+});
+
+$("b-local").addEventListener("click", function(){
+  MODE = "local";
+  var n = clean($("f-name").value);
+  LOCAL_ROSTER = [];
+  if (n) LOCAL_ROSTER.push({ id:"p0-"+nonce().slice(0,4), name:n, color:COLORS[0] });
+  ROOM_CODE = null;
+  $("lob-code").hidden = true;
+  setText($("lob-help"), "Everyone takes a turn on this device. The screen covers between players, so nobody sees anyone else’s pick.");
+  show("lobby"); renderLobby();
+});
+
+$("b-copy").addEventListener("click", function(){
+  var link = location.origin + location.pathname + "#" + ROOM_CODE;
+  var btn = $("b-copy");
+  function ok(){ btn.textContent = "Link copied"; setTimeout(function(){ btn.textContent = "Copy invite link"; }, 1800); }
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(ok, function(){ btn.textContent = "Code: " + ROOM_CODE.toUpperCase(); });
+  } else { btn.textContent = "Code: " + ROOM_CODE.toUpperCase(); }
+});
+
+/* ========== joining ========== */
+function msg(s){ setText($("home-msg"), s); }
+
+function enterRoom(code, creating){
+  MY_NAME = clean($("f-name").value);
+  if (!MY_NAME){ msg("Put a name in first."); $("f-name").focus(); return; }
+  store("bo-name", MY_NAME);
+  msg("Connecting…");
+
+  claudeRoom().then(function(room){
+    if (!room){
+      msg("This browser can’t reach other players — opening pass-and-pass instead.");
+      $("b-local").click();
+      return;
+    }
+    return room.join("bo-" + code).then(function(named){
+      ROOM = named; ROOM_CODE = code; MODE = "online";
+      try { location.hash = code; } catch(e){}
+      setText($("c-room-v"), code.toUpperCase());
+      setText($("lob-code-v"), code.toUpperCase());
+      $("lob-code").hidden = false;
+      wireRoom();
+      publishMe();
+      show("lobby"); renderLobby();
+    });
+  }).catch(function(){
+    msg("Couldn’t open that room. Check the code, or play on one device.");
+  });
+}
+
+function claudeRoom(){
+  if (!(window.claude && window.claude.use)) return Promise.resolve(null);
+  return window.claude.use("room").catch(function(){ return null; });
+}
+
+function wireRoom(){
+  ROOM.onPeers(onPeersChange, function(){ netState(false); });
+  ROOM.onConnection(function(c){ netState(c); }, function(){ netState(false); });
+  ROOM.on("commit", function(m){ if (IS_HOST && m.data) takeCommit(m.peer, m.data.r, String(m.data.h||"")); });
+  ROOM.on("reveal", function(m){
+    if (!G || !m.data || m.data.r !== G.round) return;
+    clearInterval(tickTimer);
+    sendOpen(m.data.r);
+  });
+  ROOM.on("open", function(m){ if (IS_HOST && m.data) takeOpen(m.peer, m.data); });
+}
+
+function netState(c){
+  $("c-net").hidden = false;
+  $("c-net-d").className = "dot" + (c ? " on" : "");
+  setText($("c-net-v"), c ? "live" : "linking");
+}
+
+$("b-create").addEventListener("click", function(){ enterRoom(code4(), true); });
+$("b-join").addEventListener("click", function(){
+  var raw = String($("f-code").value || "").toLowerCase().replace(/[^a-z0-9]/g,"");
+  if (raw.length !== 4){ msg("Room codes are four characters."); return; }
+  enterRoom(raw, false);
+});
+$("f-code").addEventListener("keydown", function(e){ if (e.key === "Enter") $("b-join").click(); });
+$("f-name").addEventListener("keydown", function(e){ if (e.key === "Enter") $("b-create").click(); });
+
+/* ========== boot ========== */
+function start(saved){
+  var n = (saved && saved.name) || load("bo-name") || "";
+  if (n) $("f-name").value = n;
+  var h = String(location.hash || "").replace(/^#/,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+  if (h.length === 4){
+    $("f-code").value = h.toUpperCase();
+    msg("Room " + h.toUpperCase() + " is ready for you — add your name and join.");
+  }
+  show("home");
+  claudeRoom().then(function(r){
+    if (!r) setText($("home-msg"), $("home-msg").textContent ||
+      "Live rooms need a signed-in Claude account. Pass-and-pass works for everyone.");
+  });
+}
+
+if (window.claude && window.claude.hot && window.claude.hot.snapshot){
+  window.claude.hot.snapshot(function(){ return { name: MY_NAME || clean($("f-name").value) }; });
+}
+if (window.claude && window.claude.hot && window.claude.hot.ready) window.claude.hot.ready(start);
+else start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+
+})();
+</script>
