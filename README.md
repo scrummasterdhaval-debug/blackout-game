@@ -50,6 +50,12 @@ Rooms run on the Claude artifact `room` capability, which only admits
 invited guests. Someone opening a public link while signed out cannot connect,
 and view-only members cannot send moves.
 
+On joining a room the page emits a probe on a topic nobody listens to. If the
+platform rejects it with `not_permitted`, that viewer is told they can only
+watch, and is left out of both the player roster and host election — rather
+than sitting in the lobby looking like a player and silently timing out every
+round.
+
 Pass & Play exists to cover exactly that case and works for everyone.
 
 ## How the sync works

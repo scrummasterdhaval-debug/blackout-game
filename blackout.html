@@ -252,9 +252,10 @@ input[type=text]::placeholder{color:var(--faint);letter-spacing:.02em}
         <h2>Waiting room</h2>
         <div class="codebox" id="lob-code">
           <div class="bigcode" id="lob-code-v">----</div>
-          <button class="btn" id="b-copy">Copy invite link</button>
+          <button class="btn" id="b-copy">Copy room code</button>
         </div>
-        <p class="lead" id="lob-help">Anyone with the code joins from their own phone. Nothing to install.</p>
+        <p class="lead" id="lob-help">Send this code to the others. Everyone joining needs to be signed in and invited to this page &mdash; if someone can&rsquo;t connect, use pass-and-pass instead.</p>
+        <p class="warn" id="lob-warn" hidden></p>
       </div>
       <div class="card stack">
         <h2 id="lob-count">Players</h2>
@@ -361,6 +362,8 @@ var MY_NAME = "";
 var G = null;             // game state (authoritative copy)
 var IS_HOST = false;
 var CACHED_G = null;      // last state seen, for host handover
+var CAN_PLAY = true;      // may this viewer send moves? optimistic until the probe says no
+var PROBED = false;
 
 var myPick = null, mySurge = false, myLocked = false, myNonce = null;
 var commits = {}, opens = {};         // host-side, keyed by player id
@@ -665,6 +668,9 @@ function publishState(){
 }
 function publishMe(){
   if (!ROOM) return;
+  // A viewer who cannot send moves is not a player: drop the name so they are
+  // left out of the roster and out of host election, and watch instead.
+  if (!CAN_PLAY){ ROOM.presence({ n: null, rdy: null, spec: true }).catch(function(){}); return; }
   ROOM.presence({ n: MY_NAME, rdy: myLocked }).catch(function(){});
 }
 
@@ -981,12 +987,13 @@ $("b-local").addEventListener("click", function(){
 });
 
 $("b-copy").addEventListener("click", function(){
-  var link = location.origin + location.pathname + "#" + ROOM_CODE;
   var btn = $("b-copy");
-  function ok(){ btn.textContent = "Link copied"; setTimeout(function(){ btn.textContent = "Copy invite link"; }, 1800); }
+  var code = String(ROOM_CODE || "").toUpperCase();
+  function done(t){ btn.textContent = t; setTimeout(function(){ btn.textContent = "Copy room code"; }, 1800); }
   if (navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(link).then(ok, function(){ btn.textContent = "Code: " + ROOM_CODE.toUpperCase(); });
-  } else { btn.textContent = "Code: " + ROOM_CODE.toUpperCase(); }
+    navigator.clipboard.writeText(code).then(function(){ done("Code copied"); },
+                                             function(){ done("Read it off the screen"); });
+  } else { done("Read it off the screen"); }
 });
 
 /* ========== joining ========== */
@@ -1026,7 +1033,7 @@ function claudeRoom(){
 
 function wireRoom(){
   ROOM.onPeers(onPeersChange, function(){ netState(false); });
-  ROOM.onConnection(function(c){ netState(c); }, function(){ netState(false); });
+  ROOM.onConnection(function(c){ netState(c); if (c) probeSendRights(); }, function(){ netState(false); });
   ROOM.on("commit", function(m){ if (IS_HOST && m.data) takeCommit(m.peer, m.data.r, String(m.data.h||"")); });
   ROOM.on("reveal", function(m){
     if (!G || !m.data || m.data.r !== G.round) return;
@@ -1034,6 +1041,35 @@ function wireRoom(){
     sendOpen(m.data.r);
   });
   ROOM.on("open", function(m){ if (IS_HOST && m.data) takeOpen(m.peer, m.data); });
+}
+
+/* Can this viewer send moves at all? Presence is open to everyone, but the move
+   topics need contributor level, so a view-only viewer would sit in the lobby
+   looking like a player and silently time out every round. Ask the platform
+   once, on a topic nobody listens to. Only meaningful on a live channel: while
+   connected() is false an emit resolves and is dropped, which would read as a
+   pass. Anything other than not_permitted is transient, so try again later. */
+function probeSendRights(){
+  if (PROBED || !ROOM || !ROOM.connected()) return;
+  PROBED = true;
+  ROOM.emit("probe", { t: Date.now() }).then(function(){
+    CAN_PLAY = true; renderRights();
+  }, function(e){
+    if (e && e.code === "not_permitted") CAN_PLAY = false;
+    else PROBED = false;
+    renderRights();
+  });
+}
+
+function renderRights(){
+  var w = $("lob-warn");
+  if (w){
+    w.hidden = CAN_PLAY;
+    if (!CAN_PLAY) w.textContent = "You can watch this room, but this page is shared with you as view-only, so you can’t send moves. Ask for edit access — or go back and play pass-and-pass on one device.";
+  }
+  publishMe();
+  if (screen === "lobby") renderLobby();
+  else if (screen === "game") renderGame();
 }
 
 function netState(c){
