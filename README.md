@@ -33,13 +33,18 @@ wins; equal scores share the win.
 The board destroying itself is the point. It opens wide and ends with everyone
 crowded around two bulbs nobody can afford to share.
 
-## Two ways to play
+## Three ways to play
 
-**Rooms.** One player starts a room and shares the four-character code or the
-invite link. Everyone plays on their own phone, in sync.
+**Rooms.** One player starts a room and sends the four-character code to the
+others. Everyone plays on their own phone, in sync.
+
+**Solo.** You against three bots. Each bot derives a fixed appetite for the
+high-value bulbs from its id, so they crowd and collide differently all game
+instead of moving as a block.
 
 **Pass & Play.** Everyone uses one device. The screen covers between turns so
-nobody sees anyone else's choice.
+nobody sees anyone else's choice, and skips that cover when you are the only
+person playing.
 
 The page detects which is available and routes players automatically.
 

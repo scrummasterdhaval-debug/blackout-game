@@ -232,7 +232,8 @@ input[type=text]::placeholder{color:var(--faint);letter-spacing:.02em}
         <label class="fl" for="f-name">Your name</label>
         <input type="text" id="f-name" maxlength="12" placeholder="Jo" autocomplete="off" spellcheck="false">
         <div class="row">
-          <button class="btn primary lg" id="b-create">Start a room</button>
+          <button class="btn primary lg" id="b-create" style="flex:1;min-width:140px">Start a room</button>
+          <button class="btn lg" id="b-solo" style="flex:1;min-width:140px">Play solo vs 3</button>
         </div>
         <div class="row">
           <div style="flex:1;min-width:150px">
@@ -817,6 +818,9 @@ function lockIn(){
   myLocked = true;
   if (MODE === "local"){
     localPicks[localCurrentId()] = { b: myPick, s: mySurge };
+    // The next turn may be a bot's, which does not re-render; make sure a second
+    // tap cannot land on that bot's slot.
+    $("b-lock").disabled = true; $("b-surge").disabled = true;
     advanceLocalTurn();
     return;
   }
@@ -883,13 +887,58 @@ function finishRound(){
 
 /* ========== pass & play ========== */
 var LOCAL_ROSTER = [];
+var BOT_NAMES = ["Mox", "Juno", "Pike"];
+
+function rosterEntry(id){
+  for (var i=0;i<LOCAL_ROSTER.length;i++) if (LOCAL_ROSTER[i].id === id) return LOCAL_ROSTER[i];
+  return null;
+}
+function isBot(id){ var e = rosterEntry(id); return !!(e && e.bot); }
+function humanCount(){
+  var n = 0;
+  for (var i=0;i<LOCAL_ROSTER.length;i++) if (!LOCAL_ROSTER[i].bot) n++;
+  return n;
+}
+
+/* Each bot keeps its own appetite for the big bulbs, derived from its id so it
+   stays the same all game. Low greed spreads out and farms the safe ones; high
+   greed crowds the top bulb and takes the board down with it. */
+function botGreed(id){
+  var h = 0;
+  for (var i=0;i<id.length;i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return 0.9 + (h % 100) / 100 * 0.9;
+}
+
+function botMove(g, id){
+  var live = [];
+  g.bulbs.forEach(function(b,i){ if (!b.dead) live.push({ i:i, v:b.v }); });
+  if (!live.length) return { b:0, s:false };
+  var greed = botGreed(id), tot = 0;
+  var w = live.map(function(b){ var x = Math.pow(b.v, greed); tot += x; return x; });
+  var r = Math.random() * tot, acc = 0, pick = live[live.length-1].i;
+  for (var k=0;k<live.length;k++){ acc += w[k]; if (r <= acc){ pick = live[k].i; break; } }
+  // Surge late, on the bulb everyone wants, where a collision is likely.
+  var me = g.players[id];
+  var top = live[live.length-1].i;
+  var surge = !!(me && me.su) && live.length <= 3 && pick === top && Math.random() < 0.4;
+  return { b: pick, s: surge };
+}
 
 function startLocalTurn(){
   if (!G) return;
   var id = G.order[localTurn];
   if (!id){ finishLocalRound(); return; }
+  if (isBot(id)){
+    localPicks[id] = botMove(G, id);
+    $("cover").hidden = true;
+    setText($("g-hint"), "Opponents are choosing…");
+    setTimeout(advanceLocalTurn, 420);
+    return;
+  }
   myPick = null; mySurge = false; myLocked = false;
   var p = G.players[id];
+  // Nobody to hide the screen from when you are the only person here.
+  if (humanCount() <= 1){ $("cover").hidden = true; renderGame(); return; }
   setText($("cov-pre"), "Round " + G.round + " — pass the phone to");
   setText($("cov-who"), p.n);
   $("cov-who").style.color = p.c;
@@ -973,6 +1022,19 @@ $("b-again").addEventListener("click", function(){
     publishState();
     onPhaseChanged();
   }
+});
+
+$("b-solo").addEventListener("click", function(){
+  MODE = "local";
+  var n = clean($("f-name").value) || "You";
+  LOCAL_ROSTER = [{ id:"you-"+nonce().slice(0,4), name:n, color:COLORS[0], bot:false }];
+  BOT_NAMES.forEach(function(bn,i){
+    LOCAL_ROSTER.push({ id:"bot"+i+"-"+nonce().slice(0,4), name:bn, color:COLORS[i+1], bot:true });
+  });
+  ROOM_CODE = null;
+  $("lob-code").hidden = true;
+  G = newGame(LOCAL_ROSTER, null);
+  onPhaseChanged();
 });
 
 $("b-local").addEventListener("click", function(){
